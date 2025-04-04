@@ -1,0 +1,262 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Quick-Image-Pack-Creator</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <style>
+        :root {
+            --bg: #0a0a0a;
+            --surface: #1a1a1a;
+            --text: #ffffff;
+            --primary: #ffffff;
+            --secondary: #cccccc;
+        }
+
+        body {
+            font-family: system-ui, -apple-system, sans-serif;
+            margin: 0;
+            padding: 2rem;
+            background: var(--bg);
+            color: var(--text);
+            min-height: 100vh;
+        }
+
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+        }
+
+        .drop-zone {
+            border: 2px dashed var(--primary);
+            border-radius: 8px;
+            padding: 2rem;
+            text-align: center;
+            margin: 2rem 0;
+            cursor: pointer;
+            transition: 0.25s;
+            position: relative;
+        }
+
+        .drop-zone.dragover {
+            background: var(--surface);
+        }
+
+        .preview-area {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+            gap: 1rem;
+            margin-bottom: 2rem;
+        }
+
+        .preview-item {
+            background: var(--surface);
+            padding: 0.5rem;
+            border-radius: 6px;
+            text-align: center;
+            overflow: hidden;
+        }
+
+        .preview-image {
+            width: 100%;
+            height: 80px;
+            object-fit: contain;
+            margin-bottom: 0.5rem;
+        }
+
+        .size-entry {
+            background: var(--surface);
+            padding: 1rem;
+            border-radius: 8px;
+            margin-bottom: 1rem;
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr auto auto;
+            gap: 1rem;
+            align-items: center;
+        }
+
+        button {
+            background: transparent;
+            color: var(--primary);
+            border: 1px solid var(--primary);
+            padding: 0.75rem 1.5rem;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: 0.25s;
+            font-size: 14px;
+        }
+
+        button:hover {
+            background: rgba(255,255,255,0.1);
+        }
+
+        input, select {
+            background: var(--bg);
+            color: var(--text);
+            border: 1px solid var(--primary);
+            padding: 0.5rem;
+            border-radius: 4px;
+            font-size: 14px;
+            outline: none;
+        }
+
+        input:focus, select:focus, button:focus {
+            box-shadow: none;
+            outline: none;
+        }
+
+        .controls {
+            display: flex;
+            gap: 1rem;
+            margin-bottom: 2rem;
+        }
+
+        .quality-container {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .upload-label {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+			margin-bottom: 20px;
+            gap: 0.5rem;
+        }
+
+        .upload-icon {
+            width: 40px;
+            height: 40px;
+            stroke: var(--primary);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Quick-Image-Pack-Creator</h1>
+        
+        <div class="drop-zone" id="dropZone">
+            <label class="upload-label">
+                <div>Drag files or click to upload</div>
+            </label>
+            <input type="file" id="fileInput" accept="image/*" multiple>
+        </div>
+
+        <div class="preview-area" id="previewArea"></div>
+
+        <div class="controls">
+            <button onclick="addSizeEntry()">Add Size</button>
+            <button onclick="convertImages()">Create Pack</button>
+        </div>
+
+        <div id="sizeContainer"></div>
+    </div>
+
+    <script>
+        const sizeContainer = document.getElementById('sizeContainer');
+        const dropZone = document.getElementById('dropZone');
+        const fileInput = document.getElementById('fileInput');
+        const previewArea = document.getElementById('previewArea');
+
+        function updatePreview() {
+            previewArea.innerHTML = '';
+            Array.from(fileInput.files).forEach(file => {
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    const previewItem = document.createElement('div');
+                    previewItem.className = 'preview-item';
+                    previewItem.innerHTML = `
+                        <img class="preview-image" src="${e.target.result}" alt="${file.name}">
+                        <div>${file.name}</div>
+                    `;
+                    previewArea.appendChild(previewItem);
+                };
+                reader.readAsDataURL(file);
+            });
+        }
+
+        function addSizeEntry() {
+            const entry = document.createElement('div');
+            entry.className = 'size-entry';
+            entry.innerHTML = `
+                <input type="number" placeholder="Width" class="size-width" min="1">
+                <input type="number" placeholder="Height" class="size-height" min="1">
+                <select class="format">
+                    <option value="webp">WEBP</option>
+                    <option value="jpeg">JPG</option>
+                    <option value="png">PNG</option>
+                </select>
+                <div class="quality-container">
+                    <input type="number" class="quality" value="100" min="1" max="100" step="1">
+                    <span>%</span>
+                </div>
+                <button onclick="this.parentElement.remove()">Remove</button>
+            `;
+            sizeContainer.appendChild(entry);
+        }
+
+        dropZone.addEventListener('click', () => fileInput.click());
+        dropZone.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            dropZone.classList.add('dragover');
+        });
+        dropZone.addEventListener('dragleave', () => dropZone.classList.remove('dragover'));
+        dropZone.addEventListener('drop', (e) => {
+            e.preventDefault();
+            dropZone.classList.remove('dragover');
+            fileInput.files = e.dataTransfer.files;
+            updatePreview();
+        });
+
+        fileInput.addEventListener('change', updatePreview);
+
+        window.addEventListener('load', () => {
+            fileInput.value = '';
+        });
+
+        async function convertImages() {
+            const files = fileInput.files;
+            if (!files.length) return alert('Please select images');
+            
+            const zip = new JSZip();
+            const entries = Array.from(document.querySelectorAll('.size-entry'));
+            
+            for (const file of files) {
+                const img = await createImageBitmap(file);
+                const folderName = file.name.split('.')[0];
+                const folder = zip.folder(folderName);
+                
+                for (const entry of entries) {
+                    const width = parseInt(entry.querySelector('.size-width').value);
+                    const height = parseInt(entry.querySelector('.size-height').value);
+                    const format = entry.querySelector('.format').value;
+                    const quality = parseInt(entry.querySelector('.quality').value);
+                    
+                    if (!width || !height) continue;
+                    
+                    const canvas = document.createElement('canvas');
+                    canvas.width = width;
+                    canvas.height = height;
+                    const ctx = canvas.getContext('2d');
+                    ctx.drawImage(img, 0, 0, width, height);
+                    
+                    const blob = await new Promise(resolve => 
+                        canvas.toBlob(resolve, `image/${format}`, quality/100)
+                    );
+                    
+                    const ext = format === 'jpeg' ? 'jpg' : format;
+                    const name = `${folderName}_${width}_${height}.${ext}`;
+                    folder.file(name, blob);
+                }
+            }
+            
+            const content = await zip.generateAsync({type: 'blob'});
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(content);
+            link.download = 'pack.zip';
+            link.click();
+        }
+    </script>
+</body>
+</html>
